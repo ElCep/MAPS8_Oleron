@@ -44,13 +44,14 @@ global
 	float dyke_width <- 15.0;
 
 	//initialisation des variables
-	init
+	init 
 	{
 	// l'utilisateur (agent controle par le joueur via des boutons)
 	//create user;
 		do init_cells;
 		do init_water;
 		do init_obstacles;
+		create territoire number:1 ;
 		sea_cells <- parcelle where (each.is_sea);
 		ask parcelle
 		{
@@ -86,7 +87,6 @@ global
 			water_height <- hauteur_eau;
 			is_sea <- true;
 		}
-
 	}
 
 	//initialisation des bâtiments et des digues a partir du shapefile
@@ -126,7 +126,7 @@ global
 			maison <- true;
 			bats <- building overlapping self;
 			//surface d'une cellule 200x200 et surface_maison, taux de surface couverte par le bati en %
-			surface_maison <- sum(bats collect each.shape.area) / 400;
+			densite_bati <- sum(bats collect each.shape.area) / 400;
 		}
 	}
 
@@ -207,19 +207,41 @@ global
 	}
 
 
-	/**********************************
-	 * *** CALCUL DES INDICATEURS *** *
-	 **********************************/
-	 
-	 int indicateurSatisfaction {
-	 	sum( parcelle collect each.valeurSatisfaction)
-	 }
-
 
 }
 /* ******************************************************************
  ******* fin global *******                                       ***
 *********************************************************************/
+
+species territoire {
+	
+	// surface habitable = nombre de cellules terrestres * densite bati
+	// pourcentage bati de l'ile
+	float surface_habitable {
+		sum ((parcelle where !each.is_sea) collect each.densite_bati)
+	}
+
+	//  20000 habitants en tout / surface habitable = population max par cellule
+	// nb d'habitants par %age de surface batie 
+	float densite_population {
+		surface_habitable/20000
+	}
+	
+	// population totale
+	
+
+	/**********************************
+	 * *** CALCUL DES INDICATEURS *** *
+	 **********************************/
+	 
+	 // popularite en fonction de la satisfaction ponderee de chaque cellule (satisfaction*densite population)
+	 int indicateurPopularite {
+	 	sum( parcelle collect each.satisfactionPonderee) / sum(parcelle collect each.densite_bati)
+	 }
+
+
+	
+}
 
 
 /********************************
@@ -451,7 +473,7 @@ grid parcelle width: 52 height: 90 neighbours: 8 frequency: 0 use_regular_agents
 
 	// il y a une maison sur cette parcelle
 	list<building> bats;
-	float surface_maison <- 0.0;
+	float densite_bati <- 0.0;
 	bool maison <- false;
 
 	// valeur ecologique
@@ -481,6 +503,11 @@ grid parcelle width: 52 height: 90 neighbours: 8 frequency: 0 use_regular_agents
 
 	// la satisfaction des habitants de cette parcelle est la somme des 3 indices (secu, ecolo, attractivite)
 	int valeurSatisfaction function: { valeurSecurite + valeurAttractivite + valeurEcolo };
+
+	// satisfaction ponderee par la population - valeur entre 0 et 1000 (densite bati entre 1 et 100)
+	int satisfactionPonderee {
+		valeurSatisfaction*densite_bati
+	}
 
 	/*********************************
 	 * *** REFLEXES DE LA PARCELLE ***
@@ -619,6 +646,15 @@ experiment Displays type: gui
 
 		/* rajouter des graphiques de visualisation des differents indicateurs */
 		
+		display ChartHisto {
+			chart "DataBar" type:histogram
+			{
+				data "nombre de satisfaits" value:(list(parcelle) count (each.valeurSatisfaction > 5)) color:°red;
+				data "popularite" value:any(territoire).indicateurPopularite;
+//				data "carry_food_ants" value:(list(ant) count (each.hasFood)) color:°green;				
+			}
+			
+			}
 		
 		
 	}
