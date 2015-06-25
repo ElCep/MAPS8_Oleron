@@ -113,6 +113,9 @@ global
 			do update_cells;
 		}
 
+	parcelle closestSea<- ((parcelle where (each.is_sea)) closest_to(self));  
+   float distanceSea<- self distance_to closestSea;
+
 	}
 
 	//renseigne sur la présence de digue sur une cellule
@@ -164,7 +167,6 @@ global
 		{
 			do flow;
 		}
-
 	}
 
 	//mise à jour de la couleur des cellules en fonction de l'eau
@@ -382,6 +384,11 @@ grid parcelle width: 52 height: 90 neighbours: 8 frequency: 0 use_regular_agents
 	// cellule mer / terre 
 	bool is_sea <- false;
 
+   // parcelle de mer la plus proche et distance à la mer 
+   parcelle closestSea;
+   float distanceSea;
+
+
 	// liste des obstacles situes sur cette cellule      
 	list<obstacle> obstacles;
 
@@ -467,6 +474,8 @@ grid parcelle width: 52 height: 90 neighbours: 8 frequency: 0 use_regular_agents
 	bool digue <- false;
 	//bool ttest <- !empty(dyke in agents_overlapping(self));
 	//bool has_dyke update: self.geometry overlaps dyke;
+	//est-ce que la digue est écolo (si il y en a)
+	bool est_ecolo<-false;
 
 	// il est possible de construire sur cette parcelle (pas en zone noire)
 	bool constructible <- true;
@@ -484,6 +493,15 @@ grid parcelle width: 52 height: 90 neighbours: 8 frequency: 0 use_regular_agents
 
 	//valeur securite
 	int valeurSecurite <- rnd(10) min: 0 max: 10;
+
+	//valeur information : connaissance du risque
+	int information <- rnd (10) min: 0 max:10; 
+	
+	// valeur historique: submersion 
+	int nbSubmersion <- 0 ;
+	int maxHauteur <- 0;
+	
+	
 
 	// impots donnes par cette parcelle a la mairie en fonction de sa population+attractivite
 	int impots update:		taux_impots*(valeurAttractivite); // + agents_overlapping(self)
@@ -542,10 +560,15 @@ grid parcelle width: 52 height: 90 neighbours: 8 frequency: 0 use_regular_agents
 	// proximite a la mer, constructibilite
 	}
 
-	// reflexe 
-	reflex updateValeurSecurite when: phase_sub
+	// reflexe pour la mise à jours de la valeur de securité à chaque tour 
+	reflex updateValeurSecurite when: !phase_sub
 	{
-	// depend des digue, de l'information,densite
+	int secuDigue <- 0;
+	if (digue=false){secuDigue<-0;}
+	else if (est_ecolo=true){secuDigue<-4;}
+	else {secuDigue<-10;}
+	valeurSecurite <- max([0, min([10,round(information+secuDigue+densite_bati/10-nbSubmersion-maxHauteur+distanceSea/2000)/6])]);
+	
 	}
 
 	/************************************
@@ -575,7 +598,7 @@ grid parcelle width: 52 height: 90 neighbours: 8 frequency: 0 use_regular_agents
 	// zone noire = rond noir
 		if (!constructible)
 		{
-			draw circle(210 # m) color: # black;
+			draw circle(190 # m) color: # black;
 		}
 
 		// maison = carre bleu
@@ -626,9 +649,6 @@ experiment Displays type: gui
 			{
 				draw lamer.contour color: # yellow;
 			}
-			//  species dyke aspect: geometry;
-			//image "toto" gis: "../includes/contours_ile.shp" color: #red;
-			//	species building aspect: geometry refresh: false;
 		}
 
 		// carte des valeurs ecolo
