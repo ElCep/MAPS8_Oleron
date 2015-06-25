@@ -18,9 +18,18 @@ global
 	//définition des géométries
 	geometry shape <- envelope(file("../includes/rect.shp"));
 	geometry lamer <- geometry(first(island_shapefile));
+	
+	geometry sea <- geometry(sea_shapefile);
+		
 
 	//définition des cellules de mer
 	list<parcelle> sea_cells;
+   	list<parcelle> merProche;
+   	list<parcelle> premiercercledelamer;
+   	list<parcelle> toutpremiercercledelamer;
+   	
+   	list<parcelle> cellulesquiserventarien;
+   	list<parcelle> cellulesquiserventaquelquechose;
 
 	//un bool utiliser pour lancer le reflexe de flood TRUE = flowing
 	bool phase_sub <- false;
@@ -36,9 +45,6 @@ global
 	float hauteur_eau <- 2.0 # m;
 	float temps_submersion <- 5 # h;
 
-	//définition pas de temps
-	float step <- 1 °h;
-
 	//paramètre des digues 
 	float dyke_height <- 15.0;
 	float dyke_width <- 15.0;
@@ -53,11 +59,16 @@ global
 		do init_obstacles;
 		create territoire number:1 ;
 		sea_cells <- parcelle where (each.is_sea);
-		ask parcelle
+		toutpremiercercledelamer <- sea_cells where each.celluleterrecoteProche;
+		premiercercledelamer <- sea_cells where each.celluleterrecote;
+		cellulesquiserventarien <- sea_cells - premiercercledelamer;
+		ask cellulesquiserventarien {already <- true;}
+		cellulesquiserventaquelquechose <- parcelle - cellulesquiserventarien;
+		/*ask parcelle
 		{
 			do update_color;
-		}
-
+		}*/
+		
 		do placer_digues_maisons;
 		//do color_bati;
 	}
@@ -81,13 +92,19 @@ global
 	//initialisation de la mer a partir du shapefile
 	action init_water
 	{
-		geometry sea <- geometry(sea_shapefile);
+		
 		ask parcelle overlapping sea
 		{
 			water_height <- hauteur_eau;
 			is_sea <- true;
 		}
+		ask parcelle where (toutpremiercercledelamer contains(each)) {
+			is_sea <- false;
+		}
+	
+			
 	}
+
 
 	//initialisation des bâtiments et des digues a partir du shapefile
 	action init_obstacles
@@ -95,11 +112,6 @@ global
 	//création des bâtiments à partir des fichiers géo
 		create building from: buildings_shapefile
 		{
-			loop i from: 0 to: length(shape.points) - 1
-			{
-				shape <- set_z(shape, i, 0.0);
-			}
-
 			do update_cells;
 		}
 
@@ -113,9 +125,11 @@ global
 			do update_cells;
 		}
 
-	parcelle closestSea<- ((parcelle where (each.is_sea)) closest_to(self));  
-   float distanceSea<- self distance_to closestSea;
-
+		//parcelle closestSea<- ((parcelle where (each.is_sea)) closest_to(self));  
+  		float distanceSea<- self distance_to sea; 
+   
+   //merProche <- parcelle where (each.distanceSea=0 and each.is_sea);
+	//write(length(merProche));
 	}
 
 	//renseigne sur la présence de digue sur une cellule
@@ -145,55 +159,81 @@ global
 	}
 */
 	//régénartion de l'eau dans les cellules de mer (pour simuler le remplacement de l'eau)
-	reflex adding_input_water when: phase_sub
+	action adding_input_water
 	{
 		float water_input <- rnd(100) / 100;
-		ask sea_cells
+		ask premiercercledelamer//sea_cells
 		{
 			water_height <- water_height + water_input;
 		}
 
 	}
 
+float t1;
+float t2;
 	//mécanisme de submersion  -demande de propagation aux cellules
-	reflex flowing when: phase_sub
-	{
-		ask parcelle
+	action flowing
+	{	ask cellulesquiserventaquelquechose
 		{
 			already <- false;
 		}
-
-		ask (parcelle sort_by ((each.altitude + each.water_height + each.obstacle_height)))
+		ask (cellulesquiserventaquelquechose sort_by ((each.altitude + each.water_height + each.obstacle_height)))
 		{
 			do flow;
 		}
+		
+	}
+	reflex info {
+		write "t1 : " + t1;
+		write "t2: " + t2;
 	}
 
 	//mise à jour de la couleur des cellules en fonction de l'eau
-	reflex update_cell_color when: phase_sub
+	action update_cell_color 
 	{
 		ask parcelle
 		{
 			do update_color;
 		}
 
-		do placer_digues_maisons;
+		//do placer_digues_maisons;
 		//do color_bati;
 	}
 	// reflexe de la parcelle de mettre a jour sa couleur
 	// les digues et maisons ne bougent pas: pas besoin de mise a jour
 
-	//condition de fin - a partir de t>tfin, la diffusion diminue
-	reflex fin_submersion when: phase_sub
-	{
-		if time > temps_submersion
-		{
-			diffusion_rate <- max([0, diffusion_rate - 0.1]);
+
+
+	
+	// SUUUBBBBBMMMMEEEERRRRSSSIIIIOOOONNNNNNN
+	action submerge {
+	//boucle de submersion
+		float t <- machine_time;
+		loop i from : 0 to : 5 {
+		//	list<parcelle> actives <- parcelle where (each.water_height > 0.0 and );
+		//flowing
+			do adding_input_water;
+			do flowing;
+					//ask dyke {do breaking_dynamic;}
+		
+		//condition de fin - a partir de t>tfin, la diffusion diminue
+			if i > temps_submersion
+			{
+				diffusion_rate <- max([0, diffusion_rate - 0.1]);
+			}
 		}
+		t1 <- t1 + machine_time - t;
+		do 	update_cell_color;
+		t2<- t2 + machine_time - t;
+		 	
 	}
 	
-	// TODO condition de transition entre phase submersion et phaase interactive
+	
+	
+	
 	reflex transition_submersion {
+		
+	do submerge;
 		// si phase_sub depuis tant de temps / inondation finie
 		// alors passer en phase interactive
 		
@@ -336,7 +376,7 @@ species dyke parent: obstacle
 		height <- dyke_height - mean(cells_concerned collect (each.altitude));
 	}
 
-	reflex breaking_dynamic when: phase_sub
+	action breaking_dynamic
 	{
 		if (water_pressure = 1.0)
 		{
@@ -350,7 +390,6 @@ species dyke parent: obstacle
 		{
 			counter_wp <- 0;
 		}
-
 	}
 
 }
@@ -384,6 +423,8 @@ grid parcelle width: 52 height: 90 neighbours: 8 frequency: 0 use_regular_agents
 	// cellule mer / terre 
 	bool is_sea <- false;
 
+	bool celluleterrecote function: {((self neighbours_at 2) first_with not each.is_sea) != nil};
+	bool celluleterrecoteProche function: {((self neighbours_at 0) first_with not each.is_sea) != nil};
    // parcelle de mer la plus proche et distance à la mer 
    parcelle closestSea;
    float distanceSea;
@@ -509,7 +550,6 @@ grid parcelle width: 52 height: 90 neighbours: 8 frequency: 0 use_regular_agents
 
 	// satisfaction ecologique inversement proportionnelle a la distance vers la plus proche cellule de haute valeur ecologique
 	// attention closest_to n'est pas optimise
-	//parcelle closestBeach <- ((parcelle where (each.valeurEcolo>7)) closest_to(self));  
 	//cell closestBeach <- ((cell where (each.valeurEcolo>7)) closest_to(self));  
 	//float distanceBeach <- self distance_to closestBeach;
 
