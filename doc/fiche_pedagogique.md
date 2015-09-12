@@ -23,7 +23,7 @@ Modélisation d'accompagnement, et d'aide à la décision
 ![illustation du modele](./img/sprite_logo.gif "mnt d'après srtm")
 
 
-_Introduction et problématique _: 
+_Introduction et problématique_: 
 
 Notre objectif avec ce modèle est de permettre aux décideurs et acteurs locaux d’évaluer l’impact de leurs décisions, d’apprendre et de comprendre les implications de la gestion des risques sur leur territoire (île d'Oléron).
 
@@ -49,7 +49,7 @@ On se positionne ici dans un contexte de changement climatique (montée des eaux
 
 Par ailleurs, le territoire est particulièrement vulnérable à la submerssion, les altitudes variant entre -1m (zone de marécage) et 17m. Les Aléas "submersion", peuvent donc être très fort tout comme l’érosion du trait de côte.
 
-![mnt du modèle](img/mnt.jpg "logo déposé sprite")
+![mnt du modèle](./img/mnt.jpg "logo déposé sprite")
 
 Dans ce contexte, cela questionne les autorités territoriales (communes, communauté de communes, etc.) quant à la stratégie de gestion de ces risques.
 
@@ -63,7 +63,7 @@ Dans le modèle `sripte` nous avons implémenté 3 types d'agents (c.f. Diagramm
 
 Le maire et les agents des services municipaux seront joués par des joueurs humains, et leurs actions mettrons à jours les variables des agents de la grille. 
 
-![Diagramme de classe](img/uml_class.png "Diagrammme de classe UML")
+![Diagramme de classe](./img/uml_class.png "Diagrammme de classe UML")
 
 _Variables_
 
@@ -84,7 +84,7 @@ Les parcelles ont des attributs :
 
 ### Scheduleur
 
-![Diagramme de classe](img/scheduleur.png)
+![Diagramme de classe](./img/scheduleur.png)
 
 
 Un tour de jeu est égal a une année et comprend la possibilité d'une submersion marine et le bilan de son impact. 
