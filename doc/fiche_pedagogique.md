@@ -20,7 +20,7 @@ Modélisation d'accompagnement, et d'aide à la décision
 #Sprite-Oléron
 
 
-![illustation du modele](img/sprite_logo.gif "mnt d'après srtm")
+![illustation du modele](./img/sprite_logo.gif "mnt d'après srtm")
 
 
 _Introduction et problématique _: 
